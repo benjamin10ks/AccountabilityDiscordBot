@@ -144,7 +144,7 @@ func main() {
 		}
 	}()
 
-	log.Println("Bot is now running. Press CTRL-C to exit.")
+	log.Println("Bot is now running.")
 
 	select {}
 }
