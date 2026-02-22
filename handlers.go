@@ -28,6 +28,6 @@ func handleWebhook(dg *discordgo.Session, w http.ResponseWriter, r *http.Request
 	}
 	userID := dg.State.User.ID
 
-	sendMessage(dg, ChannelID, userID, fmt.Sprintf("New commit by %s: %s", payload.Commits[0].Author.Name, payload.Commits[0].Message))
+	sendMessage(dg, ChannelID, fmt.Sprintf("<@%s> New commit by %s: %s", userID, payload.Commits[0].Author.Name, payload.Commits[0].Message))
 	w.WriteHeader(http.StatusOK)
 }

@@ -143,9 +143,9 @@ func main() {
 				log.Printf("Error checking commits: %v", err)
 			}
 			if len(*commits) > 0 {
-				sendMessage(dg, ChannelID, userID, fmt.Sprintf("Daily commit check: %d commits found for today!", len(*commits)))
+				sendMessage(dg, ChannelID, fmt.Sprintf("<@%s> Daily commit check: %d commits found for today!", userID, len(*commits)))
 			} else {
-				sendMessage(dg, ChannelID, userID, "Ur a bum get on it")
+				sendMessage(dg, ChannelID, fmt.Sprintf("Ur a bum get on it <@%s>", userID))
 			}
 
 		}
