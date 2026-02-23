@@ -13,8 +13,11 @@ import (
 )
 
 var (
-	BotToken  = os.Getenv("DISCORD_BOT_TOKEN")
-	ChannelID = os.Getenv("DISCORD_CHANNEL_ID")
+	BotToken       = os.Getenv("DISCORD_BOT_TOKEN")
+	ChannelID      = os.Getenv("DISCORD_CHANNEL_ID")
+	GithubClientID = os.Getenv("GITHUB_CLIENT_ID")
+	GithubSecret   = os.Getenv("GITHUB_CLIENT_SECRET")
+	BaseURL        = os.Getenv("BASE_URL")
 )
 
 type PushPayload struct {
@@ -71,14 +74,9 @@ func main() {
 			owner := parts[0]
 			repo := parts[1]
 
-			_, err = db.Exec(`
-				INSERT OR REPLACE INTO repo_registrations (discord_user_id, owner, repo_name) 
-				VALUES (?, ?, ?)
-				ON CONFLICT(discord_user_id) 
-				DO UPDATE SET owner=excluded.owner, repo_name=excluded.repo_name`,
-				userID, owner, repo)
+			err := registerRepo(db, userID, owner, repo)
 			if err != nil {
-				log.Printf("Error inserting/updating repo registration: %v", err)
+				log.Printf("Error registering repo: %v", err)
 			}
 
 			log.Printf("Registering repo '%s' for user %s", repoInput, userID)

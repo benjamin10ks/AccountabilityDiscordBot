@@ -5,6 +5,19 @@ import (
 	"log"
 )
 
+func registerRepo(db *sql.DB, userID, owner, repo string) error {
+	_, err := db.Exec(`
+				INSERT OR REPLACE INTO repo_registrations (discord_user_id, owner, repo_name) 
+				VALUES (?, ?, ?)
+				ON CONFLICT(discord_user_id) 
+				DO UPDATE SET owner=excluded.owner, repo_name=excluded.repo_name`,
+		userID, owner, repo)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func getAllRegisteredUserIDs(db *sql.DB) ([]string, error) {
 	rows, err := db.Query("SELECT discord_user_id FROM repo_registrations")
 	if err != nil {
