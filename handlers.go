@@ -11,7 +11,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-func handleWebhook(dg *discordgo.Session, w http.ResponseWriter, r *http.Request) {
+func handleWebhook(db *sql.DB, dg *discordgo.Session, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -31,22 +31,9 @@ func handleWebhook(dg *discordgo.Session, w http.ResponseWriter, r *http.Request
 
 	owner := payload.Commits[0].Author.Name
 
-	db, err := sql.Open("sqlite3", "./bot.db")
+	userID, err := getUserIDByOwner(db, owner)
 	if err != nil {
-		log.Printf("Error opening database: %v", err)
-	}
-	defer func() {
-		err := db.Close()
-		if err != nil {
-			log.Printf("Error closing database: %v", err)
-		}
-	}()
-
-	var userID string
-	row := db.QueryRow("SELECT discord_user_id FROM repo_registrations WHERE owner = ?", owner)
-	err = row.Scan(&userID)
-	if err != nil {
-		log.Printf("Error querying database: %v", err)
+		log.Printf("Error getting user ID by owner: %v", err)
 	}
 
 	sendMessage(dg, ChannelID, fmt.Sprintf("<@%s> New commit by %s: %s", userID, owner, payload.Commits[0].Message))

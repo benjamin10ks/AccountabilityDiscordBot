@@ -38,7 +38,18 @@ func main() {
 		log.Fatalf("Error creating Discord session: %v", err)
 	}
 
-	runMigrations()
+	db, err := sql.Open("sqlite3", "./bot.db")
+	if err != nil {
+		log.Fatalf("Error opening database: %v", err)
+	}
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			log.Printf("Error closing database: %v", err)
+		}
+	}()
+
+	runMigrations(db)
 
 	// Registers commands
 	dg.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -60,11 +71,6 @@ func main() {
 			owner := parts[0]
 			repo := parts[1]
 
-			db, err := sql.Open("sqlite3", "./bot.db")
-			if err != nil {
-				log.Printf("Error opening database: %v", err)
-			}
-
 			_, err = db.Exec(`
 				INSERT OR REPLACE INTO repo_registrations (discord_user_id, owner, repo_name) 
 				VALUES (?, ?, ?)
@@ -73,10 +79,6 @@ func main() {
 				userID, owner, repo)
 			if err != nil {
 				log.Printf("Error inserting/updating repo registration: %v", err)
-			}
-			err = db.Close()
-			if err != nil {
-				log.Printf("Error closing database: %v", err)
 			}
 
 			log.Printf("Registering repo '%s' for user %s", repoInput, userID)
@@ -115,7 +117,7 @@ func main() {
 
 	go func() {
 		http.HandleFunc("/webhook", func(w http.ResponseWriter, r *http.Request) {
-			handleWebhook(dg, w, r)
+			handleWebhook(db, dg, w, r)
 		})
 		log.Println("Starting webhook server on :8080")
 		err := http.ListenAndServe(":8080", nil)
@@ -136,41 +138,16 @@ func main() {
 
 			time.Sleep(time.Until(target))
 
-			db, err := sql.Open("sqlite3", "./bot.db")
+			userIDs, err := getAllRegisteredUserIDs(db)
 			if err != nil {
-				log.Printf("Error opening database: %v", err)
-			}
-
-			rows, err := db.Query("SELECT discord_user_id FROM repo_registrations")
-			if err != nil {
-				log.Printf("Error querying database: %v", err)
+				log.Printf("Error getting registered user IDs: %v", err)
 				continue
 			}
-			for rows.Next() {
-				var userID string
-				err = rows.Scan(&userID)
-				if err != nil {
-					log.Printf("Error scanning row: %v", err)
-				}
-				commits, err := checkDailyCommits(userID)
-				if err != nil {
-					log.Printf("Error checking commits: %v", err)
-				}
-				if len(*commits) > 0 {
-					sendMessage(dg, ChannelID, fmt.Sprintf("<@%s> Daily commit check: %d commits found for today!", userID, len(*commits)))
-				} else {
-					sendMessage(dg, ChannelID, fmt.Sprintf("Ur a bum get on it <@%s>", userID))
-				}
-				err = rows.Close()
-				if err != nil {
-					log.Printf("Error closing rows: %v", err)
-				}
+
+			for _, userID := range userIDs {
+				processUserCommits(db, dg, userID)
 			}
 
-			err = db.Close()
-			if err != nil {
-				log.Printf("Error closing database: %v", err)
-			}
 		}
 	}()
 

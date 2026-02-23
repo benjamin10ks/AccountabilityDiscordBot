@@ -20,23 +20,23 @@ func sendMessage(dg *discordgo.Session, channelID, message string) {
 	log.Printf("Sent message: %s", message)
 }
 
-func checkDailyCommits(userID string) (*CommitResponse, error) {
-	db, err := sql.Open("sqlite3", "./bot.db")
+func processUserCommits(db *sql.DB, dg *discordgo.Session, userID string) {
+	commits, err := checkDailyCommits(db, userID)
 	if err != nil {
-		log.Printf("Error opening database: %v", err)
+		log.Printf("Error checking daily commits: %v", err)
+		return
 	}
-
-	row := db.QueryRow("SELECT owner, repo_name FROM repo_registrations WHERE discord_user_id = ?", userID)
-
-	var owner, repo string
-	err = row.Scan(&owner, &repo)
-	if err != nil {
-		return nil, fmt.Errorf("no repo registered")
+	if len(*commits) > 0 {
+		sendMessage(dg, ChannelID, fmt.Sprintf("<@%s> Daily commit check: %d commits found for today!", userID, len(*commits)))
+	} else {
+		sendMessage(dg, ChannelID, fmt.Sprintf("Ur a bum get on it <@%s>", userID))
 	}
+}
 
-	err = db.Close()
+func checkDailyCommits(db *sql.DB, userID string) (*CommitResponse, error) {
+	owner, repo, err := getRepoByUserID(db, userID)
 	if err != nil {
-		log.Printf("Error closing database: %v", err)
+		log.Printf("Error getting repo by user ID: %v", err)
 	}
 
 	since := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
@@ -67,6 +67,6 @@ func checkDailyCommits(userID string) (*CommitResponse, error) {
 }
 
 // TODO: implement this function to set up GitHub webhooks for the registered repositories
-func SetWebhook(owner, repo string) error {
+func createWebhook(owner, repo string) error {
 	return nil
 }
