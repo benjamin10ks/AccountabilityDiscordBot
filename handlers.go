@@ -39,3 +39,7 @@ func handleWebhook(db *sql.DB, dg *discordgo.Session, w http.ResponseWriter, r *
 	sendMessage(dg, ChannelID, fmt.Sprintf("<@%s> New commit by %s: %s", userID, owner, payload.Commits[0].Message))
 	w.WriteHeader(http.StatusOK)
 }
+
+// TODO: finish this function to handle the github callback and exchange the code for an access token, then save the access token in the database
+func handleGithubCallback(db *sql.DB, dg *discordgo.Session, w http.ResponseWriter, r *http.Request) {
+}

@@ -113,6 +113,10 @@ func main() {
 		}
 	}
 
+	http.HandleFunc("/github/callback", func(w http.ResponseWriter, r *http.Request) {
+		handleGithubCallback(db, dg, w, r)
+	})
+
 	go func() {
 		http.HandleFunc("/webhook", func(w http.ResponseWriter, r *http.Request) {
 			handleWebhook(db, dg, w, r)

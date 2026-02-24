@@ -66,6 +66,11 @@ func checkDailyCommits(db *sql.DB, userID string) (*CommitResponse, error) {
 	return &commits, nil
 }
 
+// TODO: implement this function to generate a secure random state token for OAuth flow
+func generateStateToken() string {
+	return ""
+}
+
 // TODO: implement this function to set up GitHub webhooks for the registered repositories
 func createWebhook(owner, repo string) error {
 	return nil
