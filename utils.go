@@ -71,7 +71,11 @@ func generateStateToken() string {
 	return ""
 }
 
+func exchangeCodeForToken(code string) (string, error) {
+	return "", nil
+}
+
 // TODO: implement this function to set up GitHub webhooks for the registered repositories
-func createWebhook(owner, repo string) error {
+func createWebhook(accessToken, owner, repo, baseURL string) error {
 	return nil
 }

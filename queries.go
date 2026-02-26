@@ -67,3 +67,7 @@ func getUserIDByOwner(db *sql.DB, owner string) (string, error) {
 	}
 	return userID, nil
 }
+
+func storesGithubToken(db *sql.DB, userID, accessToken string) error {
+	return nil
+}

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -34,6 +35,18 @@ type CommitResponse []struct {
 		Message string `json:"message"`
 	} `json:"commit"`
 }
+
+type PendingAuth struct {
+	DiscordUserID string
+	Owner         string
+	Repo          string
+	ExpiresAt     time.Time
+}
+
+var (
+	pendingAuths   = make(map[string]PendingAuth)
+	pendingAuthsMu sync.Mutex
+)
 
 func main() {
 	dg, err := discordgo.New("Bot " + BotToken)
@@ -71,8 +84,20 @@ func main() {
 				return
 			}
 
-			owner := parts[0]
-			repo := parts[1]
+			owner, repo := parts[0], parts[1]
+
+			stateToken := generateStateToken()
+
+			pendingAuthsMu.Lock()
+			pendingAuths[stateToken] = PendingAuth{
+				DiscordUserID: userID,
+				Owner:         owner,
+				Repo:          repo,
+				ExpiresAt:     time.Now().Add(10 * time.Minute),
+			}
+			pendingAuthsMu.Unlock()
+
+			authURL := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&scope=admin:repo_hook&state=%s", GithubClientID, stateToken)
 
 			err := registerRepo(db, userID, owner, repo)
 			if err != nil {
@@ -84,7 +109,8 @@ func main() {
 			err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
-					Content: fmt.Sprintf("<@%s> Now watching %s", userID, repoInput),
+					Content: fmt.Sprintf("Click here to authorize Github access %s\n*(Link expires in 10 minutes)", authURL),
+					Flags:   discordgo.MessageFlagsEphemeral,
 				},
 			})
 			if err != nil {
@@ -114,7 +140,7 @@ func main() {
 	}
 
 	http.HandleFunc("/github/callback", func(w http.ResponseWriter, r *http.Request) {
-		handleGithubCallback(db, dg, w, r)
+		handleGithubCallback(db, w, r)
 	})
 
 	go func() {
