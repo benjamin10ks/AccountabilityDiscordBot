@@ -2,11 +2,9 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -65,59 +63,12 @@ func main() {
 		}
 	}()
 
-	runMigrations(db)
+	err = runMigrations(db)
+	if err != nil {
+		log.Fatalf("Error running migrations: %v", err)
+	}
 
-	// Registers commands
-	dg.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		if i.Type != discordgo.InteractionApplicationCommand {
-			return
-		}
-
-		switch i.ApplicationCommandData().Name {
-		case "register":
-			repoInput := i.ApplicationCommandData().Options[0].StringValue()
-			userID := i.Member.User.ID
-
-			parts := strings.Split(repoInput, "/")
-			if len(parts) != 2 {
-				log.Printf("Invalid repo format: %s", repoInput)
-				return
-			}
-
-			owner, repo := parts[0], parts[1]
-
-			stateToken := generateStateToken()
-
-			pendingAuthsMu.Lock()
-			pendingAuths[stateToken] = PendingAuth{
-				DiscordUserID: userID,
-				Owner:         owner,
-				Repo:          repo,
-				ExpiresAt:     time.Now().Add(10 * time.Minute),
-			}
-			pendingAuthsMu.Unlock()
-
-			authURL := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&scope=admin:repo_hook&state=%s", GithubClientID, stateToken)
-
-			err := registerRepo(db, userID, owner, repo)
-			if err != nil {
-				log.Printf("Error registering repo: %v", err)
-			}
-
-			log.Printf("Registering repo '%s' for user %s", repoInput, userID)
-
-			err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: fmt.Sprintf("Click here to authorize Github access %s\n*(Link expires in 10 minutes)", authURL),
-					Flags:   discordgo.MessageFlagsEphemeral,
-				},
-			})
-			if err != nil {
-				log.Printf("Error responding to interaction: %v", err)
-			}
-		}
-	})
+	registerCommands(dg, db)
 
 	err = dg.Open()
 	if err != nil {
@@ -154,30 +105,7 @@ func main() {
 		}
 	}()
 
-	go func() {
-		for {
-			now := time.Now()
-			target := time.Date(now.Year(), now.Month(), now.Day(), 20, 0, 0, 0, now.Location())
-			// testing 1 minute
-			// target := time.Now().Add(1 * time.Minute)
-			if now.After(target) {
-				target = target.Add(24 * time.Hour)
-			}
-
-			time.Sleep(time.Until(target))
-
-			userIDs, err := getAllRegisteredUserIDs(db)
-			if err != nil {
-				log.Printf("Error getting registered user IDs: %v", err)
-				continue
-			}
-
-			for _, userID := range userIDs {
-				processUserCommits(db, dg, userID)
-			}
-
-		}
-	}()
+	go scheduleDailyChecks(db, dg)
 
 	log.Println("Bot is now running.")
 

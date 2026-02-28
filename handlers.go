@@ -41,7 +41,6 @@ func handleWebhook(db *sql.DB, dg *discordgo.Session, w http.ResponseWriter, r *
 	w.WriteHeader(http.StatusOK)
 }
 
-// TODO: finish this function to handle the github callback and exchange the code for an access token, then save the access token in the database
 func handleGithubCallback(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")

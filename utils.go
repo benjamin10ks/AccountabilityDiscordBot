@@ -33,6 +33,31 @@ func processUserCommits(db *sql.DB, dg *discordgo.Session, userID string) {
 	}
 }
 
+func scheduleDailyChecks(db *sql.DB, dg *discordgo.Session) {
+	for {
+		now := time.Now()
+		target := time.Date(now.Year(), now.Month(), now.Day(), 20, 0, 0, 0, now.Location())
+		// testing 1 minute
+		// target := time.Now().Add(1 * time.Minute)
+		if now.After(target) {
+			target = target.Add(24 * time.Hour)
+		}
+
+		time.Sleep(time.Until(target))
+
+		userIDs, err := getAllRegisteredUserIDs(db)
+		if err != nil {
+			log.Printf("Error getting registered user IDs: %v", err)
+			continue
+		}
+
+		for _, userID := range userIDs {
+			processUserCommits(db, dg, userID)
+		}
+
+	}
+}
+
 func checkDailyCommits(db *sql.DB, userID string) (*CommitResponse, error) {
 	owner, repo, err := getRepoByUserID(db, userID)
 	if err != nil {
