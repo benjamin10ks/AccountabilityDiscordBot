@@ -33,7 +33,6 @@ func registerCommands(dg *discordgo.Session) {
 		go func() {
 			switch i.ApplicationCommandData().Name {
 			case "register":
-				// generate token and build URL first
 				repoInput := i.ApplicationCommandData().Options[0].StringValue()
 				userID := i.Member.User.ID
 				parts := strings.Split(repoInput, "/")
@@ -66,7 +65,6 @@ func registerCommands(dg *discordgo.Session) {
 					GithubClientID, stateToken,
 				)
 
-				// respond directly, no defer needed since we already have everything ready
 				err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
 					Data: &discordgo.InteractionResponseData{
