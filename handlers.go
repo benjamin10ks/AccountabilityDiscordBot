@@ -12,6 +12,27 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
+type PushPayload struct {
+	Commits []struct {
+		Message string `json:"message"`
+		Author  struct {
+			Name string `json:"name"`
+		} `json:"author"`
+	} `json:"commits"`
+	Repository struct {
+		Name  string `json:"name"`
+		Owner struct {
+			Login string `json:"login"`
+		} `json:"owner"`
+	} `json:"repository"`
+}
+
+type CommitResponse []struct {
+	Commit struct {
+		Message string `json:"message"`
+	} `json:"commit"`
+}
+
 func handleWebhook(db *sql.DB, dg *discordgo.Session, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -29,15 +50,22 @@ func handleWebhook(db *sql.DB, dg *discordgo.Session, w http.ResponseWriter, r *
 	if err := json.Unmarshal(body, &payload); err != nil {
 		log.Printf("Error parsing JSON: %v", err)
 	}
+	if len(payload.Commits) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
 	owner := payload.Commits[0].Author.Name
+	repo := payload.Repository.Name
 
-	userID, err := getUserIDsByRepo(db, owner)
+	users, err := getUserIDsByRepo(db, owner, repo)
 	if err != nil {
 		log.Printf("Error getting user ID by owner: %v", err)
 	}
 
-	sendMessage(dg, ChannelID, fmt.Sprintf("<@%s> New commit by %s: %s", userID, owner, payload.Commits[0].Message))
+	for _, user := range users {
+		sendMessage(dg, user.ChannelID, fmt.Sprintf("<@%s> New commit by %s in repo %s: %s", user.UserID, owner, repo, payload.Commits[0].Message))
+	}
 	w.WriteHeader(http.StatusOK)
 }
 

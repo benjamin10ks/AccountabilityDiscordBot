@@ -96,12 +96,12 @@ func getReposByUserID(db *sql.DB, userID string) ([]struct{ Owner, Name, Channel
 	return results, nil
 }
 
-func getUserIDsByRepo(db *sql.DB, owner string) ([]string, error) {
+func getUserIDsByRepo(db *sql.DB, owner, repo string) ([]struct{ UserID, ChannelID string }, error) {
 	rows, err := db.Query(`
-		SELECT DISTINCT rr.user_id
+		SELECT DISTINCT rr.user_id, rr.channel_id
 		FROM repo_registrations r
 		JOIN repos rr ON r.id = rr.repo_id
-		WHERE r.owner = ? AND r.name = ?`, owner)
+		WHERE r.owner = ? AND r.name = ?`, owner, repo)
 	if err != nil {
 		return nil, err
 	}
@@ -111,16 +111,16 @@ func getUserIDsByRepo(db *sql.DB, owner string) ([]string, error) {
 		}
 	}()
 
-	var ids []string
+	var results []struct{ UserID, ChannelID string }
 	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
+		var user struct{ UserID, ChannelID string }
+		if err := rows.Scan(&user.UserID, &user.ChannelID); err != nil {
 			log.Printf("Error scanning row: %v", err)
 			continue
 		}
-		ids = append(ids, id)
+		results = append(results, user)
 	}
-	return ids, nil
+	return results, nil
 }
 
 func storesGithubToken(db *sql.DB, userID, accessToken string) error {

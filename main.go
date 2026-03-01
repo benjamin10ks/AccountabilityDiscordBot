@@ -18,21 +18,6 @@ var (
 	BaseURL        = os.Getenv("BASE_URL")
 )
 
-type PushPayload struct {
-	Commits []struct {
-		Message string `json:"message"`
-		Author  struct {
-			Name string `json:"name"`
-		} `json:"author"`
-	} `json:"commits"`
-}
-
-type CommitResponse []struct {
-	Commit struct {
-		Message string `json:"message"`
-	} `json:"commit"`
-}
-
 type PendingAuth struct {
 	DiscordUserID string
 	Owner         string
