@@ -79,6 +79,7 @@ func handleWebhook(db *sql.DB, dg *discordgo.Session, w http.ResponseWriter, r *
 
 	for _, user := range users {
 		sendMessage(dg, user.ChannelID, fmt.Sprintf("<@%s> New commit by %s in repo %s: %s", user.UserID, owner, repo, payload.Commits[0].Message))
+		log.Printf("Sent message to user %s for repo %s/%s in channel %s", user.UserID, owner, repo, user.ChannelID)
 	}
 	w.WriteHeader(http.StatusOK)
 }
