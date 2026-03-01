@@ -45,6 +45,12 @@ func handleWebhook(db *sql.DB, dg *discordgo.Session, w http.ResponseWriter, r *
 	}
 	log.Printf("Received webhook: %s", string(body))
 
+	signature := r.Header.Get("X-Hub-Signature-256")
+	if !verifySignature(WebhookSecret, body, signature) {
+		http.Error(w, "Invalid signature", http.StatusUnauthorized)
+		return
+	}
+
 	var payload PushPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
 		log.Printf("Error parsing JSON: %v", err)
@@ -84,20 +90,28 @@ func handleGithubCallback(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	accessToken, err := exchangeCodeForToken(code)
 	if err != nil {
+		log.Printf("Error exchanging code for token: %v", err)
 		http.Error(w, "Error exchanging code for token", http.StatusInternalServerError)
 		return
 	}
 
 	err = storesGithubToken(db, pending.DiscordUserID, accessToken)
 	if err != nil {
+		log.Printf("Error storing GitHub token: %v", err)
 		http.Error(w, "Error storing GitHub token", http.StatusInternalServerError)
 		return
 	}
 	webhookURL := fmt.Sprintf("%s/webhook", BaseURL)
-	err = createWebhook(accessToken, pending.Owner, pending.Repo, webhookURL)
+	err = createWebhook(db, accessToken, pending.Owner, pending.Repo, webhookURL)
 	if err != nil {
+		log.Printf("Error creating GitHub webhook: %v", err)
 		http.Error(w, "Error creating GitHub webhook", http.StatusInternalServerError)
 		return
+	}
+
+	err = registerRepo(db, pending.DiscordUserID, pending.Owner, pending.Repo, pending.ChannelID)
+	if err != nil {
+		log.Printf("Error registering repo: %v", err)
 	}
 
 	log.Printf("Successfully authenticated user %s for repo %s/%s", pending.DiscordUserID, pending.Owner, pending.Repo)

@@ -1,16 +1,29 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
 
-func registerCommands(dg *discordgo.Session, db *sql.DB) {
+type PendingAuth struct {
+	DiscordUserID string
+	Owner         string
+	Repo          string
+	ChannelID     string
+	ExpiresAt     time.Time
+}
+
+var (
+	pendingAuths   = make(map[string]PendingAuth)
+	pendingAuthsMu sync.Mutex
+)
+
+func registerCommands(dg *discordgo.Session) {
 	dg.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if i.Type != discordgo.InteractionApplicationCommand {
 			return
@@ -20,7 +33,6 @@ func registerCommands(dg *discordgo.Session, db *sql.DB) {
 		case "register":
 			repoInput := i.ApplicationCommandData().Options[0].StringValue()
 			userID := i.Member.User.ID
-			channelID := i.ChannelID
 
 			parts := strings.Split(repoInput, "/")
 			if len(parts) != 2 {
@@ -37,20 +49,16 @@ func registerCommands(dg *discordgo.Session, db *sql.DB) {
 				DiscordUserID: userID,
 				Owner:         owner,
 				Repo:          repo,
+				ChannelID:     i.ChannelID,
 				ExpiresAt:     time.Now().Add(10 * time.Minute),
 			}
 			pendingAuthsMu.Unlock()
 
 			authURL := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&scope=admin:repo_hook&state=%s", GithubClientID, stateToken)
 
-			err := registerRepo(db, userID, owner, repo, channelID)
-			if err != nil {
-				log.Printf("Error registering repo: %v", err)
-			}
-
 			log.Printf("Registering repo '%s' for user %s", repoInput, userID)
 
-			err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Content: fmt.Sprintf("Click here to authorize Github access %s\n*(Link expires in 10 minutes)", authURL),

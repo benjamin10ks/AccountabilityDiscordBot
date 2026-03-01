@@ -138,7 +138,7 @@ func getGithubToken(db *sql.DB, userID string) (string, error) {
 	return token, err
 }
 
-func storeWebhookID(db *sql.DB, owner, repo, webhookID int64, secret string) error {
+func storeWebhookID(db *sql.DB, owner, repo string, webhookID int64, secret string) error {
 	_, err := db.Exec(`
 		UPDATE repos SET webhook_id = ?, webhook_secret = ?
 		WHERE owner = ? AND name = ?`,

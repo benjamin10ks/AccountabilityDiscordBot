@@ -5,8 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sync"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -16,21 +14,14 @@ var (
 	GithubClientID = os.Getenv("GITHUB_CLIENT_ID")
 	GithubSecret   = os.Getenv("GITHUB_CLIENT_SECRET")
 	BaseURL        = os.Getenv("BASE_URL")
-)
-
-type PendingAuth struct {
-	DiscordUserID string
-	Owner         string
-	Repo          string
-	ExpiresAt     time.Time
-}
-
-var (
-	pendingAuths   = make(map[string]PendingAuth)
-	pendingAuthsMu sync.Mutex
+	WebhookSecret  = os.Getenv("WEBHOOK_SECRET")
 )
 
 func main() {
+	if BotToken == "" || GithubClientID == "" || GithubSecret == "" || BaseURL == "" || WebhookSecret == "" {
+		log.Fatal("One or more required environment variables are missing: DISCORD_BOT_TOKEN, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, BASE_URL, WEBHOOK_SECRET")
+	}
+
 	dg, err := discordgo.New("Bot " + BotToken)
 	if err != nil {
 		log.Fatalf("Error creating Discord session: %v", err)
@@ -52,7 +43,7 @@ func main() {
 		log.Fatalf("Error running migrations: %v", err)
 	}
 
-	registerCommands(dg, db)
+	registerCommands(dg)
 
 	err = dg.Open()
 	if err != nil {

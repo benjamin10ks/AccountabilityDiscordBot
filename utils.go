@@ -76,7 +76,6 @@ func scheduleDailyChecks(db *sql.DB, dg *discordgo.Session) {
 	}
 }
 
-// TODO: check for a commit and add to count of tracked repos commited to for the day
 func checkDailyCommits(db *sql.DB, userID string) (map[string]bool, error) {
 	repos, err := getReposByUserID(db, userID)
 	if err != nil {
