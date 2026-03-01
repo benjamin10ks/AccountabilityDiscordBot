@@ -43,7 +43,7 @@ func handleWebhook(db *sql.DB, dg *discordgo.Session, w http.ResponseWriter, r *
 	if err != nil {
 		log.Printf("Error reading request body: %v", err)
 	}
-	log.Printf("Received webhook: %s", string(body))
+	log.Printf("Received webhook")
 
 	signature := r.Header.Get("X-Hub-Signature-256")
 	if signature == "" {
@@ -51,12 +51,14 @@ func handleWebhook(db *sql.DB, dg *discordgo.Session, w http.ResponseWriter, r *
 		http.Error(w, "Missing signature", http.StatusBadRequest)
 		return
 	}
+	log.Printf("Received signature: %s", signature)
 
 	if !verifySignature(WebhookSecret, body, signature) {
 		log.Printf("Invalid signature: %s", signature)
 		http.Error(w, "Invalid signature", http.StatusUnauthorized)
 		return
 	}
+	log.Printf("Signature verified successfully")
 
 	var payload PushPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
@@ -68,6 +70,7 @@ func handleWebhook(db *sql.DB, dg *discordgo.Session, w http.ResponseWriter, r *
 		w.WriteHeader(http.StatusOK)
 		return
 	}
+	log.Printf("Parsed payload for repo %s/%s with %d commits", payload.Repository.Owner.Login, payload.Repository.Name, len(payload.Commits))
 
 	owner := payload.Repository.Owner.Login
 	repo := payload.Repository.Name
@@ -76,6 +79,7 @@ func handleWebhook(db *sql.DB, dg *discordgo.Session, w http.ResponseWriter, r *
 	if err != nil {
 		log.Printf("Error getting user ID by Repo: %v", err)
 	}
+	log.Printf("Found %d users subscribed to repo %s/%s", len(users), owner, repo)
 
 	for _, user := range users {
 		sendMessage(dg, user.ChannelID, fmt.Sprintf("<@%s> New commit by %s in repo %s: %s", user.UserID, owner, repo, payload.Commits[0].Message))
