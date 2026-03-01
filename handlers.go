@@ -38,7 +38,6 @@ func handleWebhook(db *sql.DB, dg *discordgo.Session, w http.ResponseWriter, r *
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -51,7 +50,7 @@ func handleWebhook(db *sql.DB, dg *discordgo.Session, w http.ResponseWriter, r *
 		log.Printf("Error parsing JSON: %v", err)
 	}
 	if len(payload.Commits) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 
