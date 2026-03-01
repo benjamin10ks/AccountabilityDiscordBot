@@ -122,5 +122,5 @@ func createWebhook(db *sql.DB, accessToken, owner, repo, webhookURL string) erro
 	}
 	json.NewDecoder(resp.Body).Decode(&result)
 
-	return storeWebhookID(db, owner, repo, result.ID, accessToken)
+	return storeWebhookID(db, owner, repo, result.ID, WebhookSecret)
 }

@@ -61,13 +61,15 @@ func handleWebhook(db *sql.DB, dg *discordgo.Session, w http.ResponseWriter, r *
 	var payload PushPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
 		log.Printf("Error parsing JSON: %v", err)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
 	}
 	if len(payload.Commits) == 0 {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	owner := payload.Commits[0].Author.Name
+	owner := payload.Repository.Owner.Login
 	repo := payload.Repository.Name
 
 	users, err := getUserIDsByRepo(db, owner, repo)

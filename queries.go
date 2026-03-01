@@ -99,7 +99,7 @@ func getReposByUserID(db *sql.DB, userID string) ([]struct{ Owner, Name, Channel
 func getUserIDsByRepo(db *sql.DB, owner, repo string) ([]struct{ UserID, ChannelID string }, error) {
 	rows, err := db.Query(`
 		SELECT DISTINCT rr.user_id, rr.channel_id
-		FROM repo r
+		FROM repos r
 		JOIN repo_registrations rr ON r.id = r.repo_id
 		WHERE r.owner = ? AND r.name = ?`, owner, repo)
 	if err != nil {

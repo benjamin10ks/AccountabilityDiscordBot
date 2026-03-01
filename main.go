@@ -46,9 +46,6 @@ func main() {
 	}
 	log.Println("Database migrations completed successfully.")
 
-	registerCommands(dg)
-	log.Println("Commands registered successfully.")
-
 	err = dg.Open()
 	if err != nil {
 		log.Fatalf("Error opening connection: %v", err)
@@ -60,6 +57,9 @@ func main() {
 		}
 	}()
 	log.Println("Discord session opened successfully.")
+
+	registerCommands(dg)
+	log.Println("Commands registered successfully.")
 
 	appID := dg.State.User.ID
 
@@ -74,11 +74,12 @@ func main() {
 		handleGithubCallback(db, w, r)
 	})
 
+	http.HandleFunc("/webhook", func(w http.ResponseWriter, r *http.Request) {
+		handleWebhook(db, dg, w, r)
+	})
+
 	go func() {
-		http.HandleFunc("/webhook", func(w http.ResponseWriter, r *http.Request) {
-			handleWebhook(db, dg, w, r)
-		})
-		log.Println("Starting webhook server on :8080")
+		log.Println("Starting http server on :8080")
 		err := http.ListenAndServe(":8080", nil)
 		if err != nil {
 			log.Fatalf("Error starting HTTP server: %v", err)

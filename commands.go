@@ -30,53 +30,51 @@ func registerCommands(dg *discordgo.Session) {
 			return
 		}
 
-		go func() {
-			switch i.ApplicationCommandData().Name {
-			case "register":
-				repoInput := i.ApplicationCommandData().Options[0].StringValue()
-				userID := i.Member.User.ID
-				parts := strings.Split(repoInput, "/")
-				if len(parts) != 2 {
-					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-						Type: discordgo.InteractionResponseChannelMessageWithSource,
-						Data: &discordgo.InteractionResponseData{
-							Content: "Invalid format, please use owner/repo",
-							Flags:   discordgo.MessageFlagsEphemeral,
-						},
-					})
-					return
-				}
-
-				owner, repo := parts[0], parts[1]
-				stateToken := generateStateToken()
-
-				pendingAuthsMu.Lock()
-				pendingAuths[stateToken] = PendingAuth{
-					DiscordUserID: userID,
-					Owner:         owner,
-					Repo:          repo,
-					ChannelID:     i.ChannelID,
-					ExpiresAt:     time.Now().Add(10 * time.Minute),
-				}
-				pendingAuthsMu.Unlock()
-
-				authURL := fmt.Sprintf(
-					"https://github.com/login/oauth/authorize?client_id=%s&scope=admin:repo_hook&state=%s",
-					GithubClientID, stateToken,
-				)
-
-				err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		switch i.ApplicationCommandData().Name {
+		case "register":
+			repoInput := i.ApplicationCommandData().Options[0].StringValue()
+			userID := i.Member.User.ID
+			parts := strings.Split(repoInput, "/")
+			if len(parts) != 2 {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
 					Data: &discordgo.InteractionResponseData{
-						Content: fmt.Sprintf("Click here to authorize GitHub access: %s\n*(Link expires in 10 minutes)*", authURL),
+						Content: "Invalid format, please use owner/repo",
 						Flags:   discordgo.MessageFlagsEphemeral,
 					},
 				})
-				if err != nil {
-					log.Printf("Error responding to interaction: %v", err)
-				}
+				return
 			}
-		}()
+
+			owner, repo := parts[0], parts[1]
+			stateToken := generateStateToken()
+
+			pendingAuthsMu.Lock()
+			pendingAuths[stateToken] = PendingAuth{
+				DiscordUserID: userID,
+				Owner:         owner,
+				Repo:          repo,
+				ChannelID:     i.ChannelID,
+				ExpiresAt:     time.Now().Add(10 * time.Minute),
+			}
+			pendingAuthsMu.Unlock()
+
+			authURL := fmt.Sprintf(
+				"https://github.com/login/oauth/authorize?client_id=%s&scope=admin:repo_hook&state=%s",
+				GithubClientID, stateToken,
+			)
+
+			err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: fmt.Sprintf("Click here to authorize GitHub access: %s\n*(Link expires in 10 minutes)*", authURL),
+					Flags:   discordgo.MessageFlagsEphemeral,
+				},
+			})
+			if err != nil {
+				log.Printf("Error responding to interaction: %v", err)
+			}
+		}
 	})
 }
 
