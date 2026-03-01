@@ -21,7 +21,7 @@ func sendMessage(dg *discordgo.Session, channelID, message string) {
 	log.Printf("Sent message: %s", message)
 }
 
-func processUserCommits(db *sql.DB, dg *discordgo.Session, userID string) {
+func processUserCommits(db *sql.DB, dg *discordgo.Session, userID, channelID string) {
 	commitStatus, err := checkDailyCommits(db, userID)
 	if err != nil {
 		log.Printf("Error checking daily commits: %v", err)
@@ -48,29 +48,29 @@ func processUserCommits(db *sql.DB, dg *discordgo.Session, userID string) {
 		messageBuilder.WriteString(fmt.Sprintf("Ur a bum <@%s> get on it 😡", userID))
 	}
 
-	sendMessage(dg, ChannelID, messageBuilder.String())
+	sendMessage(dg, channelID, messageBuilder.String())
 }
 
 func scheduleDailyChecks(db *sql.DB, dg *discordgo.Session) {
 	for {
 		now := time.Now()
-		target := time.Date(now.Year(), now.Month(), now.Day(), 20, 0, 0, 0, now.Location())
+		// target := time.Date(now.Year(), now.Month(), now.Day(), 20, 0, 0, 0, now.Location())
 		// testing 1 minute
-		// target := time.Now().Add(1 * time.Minute)
+		target := time.Now().Add(1 * time.Minute)
 		if now.After(target) {
 			target = target.Add(24 * time.Hour)
 		}
 
 		time.Sleep(time.Until(target))
 
-		userIDs, err := getAllRegisteredUserIDs(db)
+		users, err := getAllRegisteredUserIDs(db)
 		if err != nil {
 			log.Printf("Error getting registered user IDs: %v", err)
 			continue
 		}
 
-		for _, userID := range userIDs {
-			processUserCommits(db, dg, userID)
+		for _, user := range users {
+			processUserCommits(db, dg, user.UserID, user.ChannelID)
 		}
 
 	}
@@ -114,18 +114,4 @@ func checkDailyCommits(db *sql.DB, userID string) (map[string]bool, error) {
 	}
 
 	return commitStatus, nil
-}
-
-// TODO: implement this function to generate a secure random state token for OAuth flow
-func generateStateToken() string {
-	return ""
-}
-
-func exchangeCodeForToken(code string) (string, error) {
-	return "", nil
-}
-
-// TODO: implement this function to set up GitHub webhooks for the registered repositories
-func createWebhook(accessToken, owner, repo, baseURL string) error {
-	return nil
 }

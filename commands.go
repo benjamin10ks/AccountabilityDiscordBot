@@ -20,6 +20,7 @@ func registerCommands(dg *discordgo.Session, db *sql.DB) {
 		case "register":
 			repoInput := i.ApplicationCommandData().Options[0].StringValue()
 			userID := i.Member.User.ID
+			channelID := i.ChannelID
 
 			parts := strings.Split(repoInput, "/")
 			if len(parts) != 2 {
@@ -42,7 +43,7 @@ func registerCommands(dg *discordgo.Session, db *sql.DB) {
 
 			authURL := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&scope=admin:repo_hook&state=%s", GithubClientID, stateToken)
 
-			err := registerRepo(db, userID, owner, repo, ChannelID)
+			err := registerRepo(db, userID, owner, repo, channelID)
 			if err != nil {
 				log.Printf("Error registering repo: %v", err)
 			}

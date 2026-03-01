@@ -13,7 +13,6 @@ import (
 
 var (
 	BotToken       = os.Getenv("DISCORD_BOT_TOKEN")
-	ChannelID      = os.Getenv("DISCORD_CHANNEL_ID")
 	GithubClientID = os.Getenv("GITHUB_CLIENT_ID")
 	GithubSecret   = os.Getenv("GITHUB_CLIENT_SECRET")
 	BaseURL        = os.Getenv("BASE_URL")
