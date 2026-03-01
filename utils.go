@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -21,16 +22,33 @@ func sendMessage(dg *discordgo.Session, channelID, message string) {
 }
 
 func processUserCommits(db *sql.DB, dg *discordgo.Session, userID string) {
-	commits, err := checkDailyCommits(db, userID)
+	commitStatus, err := checkDailyCommits(db, userID)
 	if err != nil {
 		log.Printf("Error checking daily commits: %v", err)
 		return
 	}
-	if len(*commits) > 0 {
-		sendMessage(dg, ChannelID, fmt.Sprintf("<@%s> Daily commit check: %d commits found for today!", userID, len(*commits)))
-	} else {
-		sendMessage(dg, ChannelID, fmt.Sprintf("Ur a bum get on it <@%s>", userID))
+
+	var messageBuilder strings.Builder
+	messageBuilder.WriteString(fmt.Sprintf("Daily commit check for <@%s>:\n", userID))
+
+	totalCommitsToday := 0
+
+	for repo, hasCommit := range commitStatus {
+		emoji := "❌"
+		if hasCommit {
+			emoji = "✅"
+			totalCommitsToday++
+		}
+		messageBuilder.WriteString(fmt.Sprintf("%s %s\n", repo, emoji))
 	}
+
+	if totalCommitsToday > 0 {
+		messageBuilder.WriteString(fmt.Sprintf("Great job <@%s>! You made %d commits today! Keep it up! 🎉", userID, totalCommitsToday))
+	} else {
+		messageBuilder.WriteString(fmt.Sprintf("Ur a bum <@%s> get on it 😡", userID))
+	}
+
+	sendMessage(dg, ChannelID, messageBuilder.String())
 }
 
 func scheduleDailyChecks(db *sql.DB, dg *discordgo.Session) {
@@ -58,37 +76,44 @@ func scheduleDailyChecks(db *sql.DB, dg *discordgo.Session) {
 	}
 }
 
-func checkDailyCommits(db *sql.DB, userID string) (*CommitResponse, error) {
-	owner, repo, err := getRepoByUserID(db, userID)
+// TODO: check for a commit and add to count of tracked repos commited to for the day
+func checkDailyCommits(db *sql.DB, userID string) (map[string]bool, error) {
+	repos, err := getReposByUserID(db, userID)
 	if err != nil {
 		log.Printf("Error getting repo by user ID: %v", err)
+		return nil, err
 	}
 
+	commitStatus := make(map[string]bool)
 	since := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
 
-	URL := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits?since=%s", owner, repo, since)
-	res, err := http.Get(URL)
-	if err != nil {
-		return nil, fmt.Errorf("error making http request: %v", err)
-	}
-	defer func() {
-		err := res.Body.Close()
+	for _, repo := range repos {
+		repoKey := fmt.Sprintf("%s/%s", repo.Owner, repo.Name)
+		URL := fmt.Sprintf("https://api.github.com/repos/%s/commits?since=%s&per_page=1", repoKey, since)
+		res, err := http.Get(URL)
+		if err != nil {
+			return nil, fmt.Errorf("error making http request: %v", err)
+		}
+
+		data, err := io.ReadAll(res.Body)
+		if err != nil {
+			return nil, fmt.Errorf("error reading response body: %v", err)
+		}
+
+		err = res.Body.Close()
 		if err != nil {
 			log.Printf("Error closing response body: %v", err)
 		}
-	}()
 
-	data, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading response body: %v", err)
+		var commits []any
+		if err = json.Unmarshal(data, &commits); err != nil {
+			return nil, fmt.Errorf("error parsing json: %v", err)
+		}
+
+		commitStatus[repoKey] = len(commits) > 0
 	}
 
-	var commits CommitResponse
-	if err = json.Unmarshal(data, &commits); err != nil {
-		return nil, fmt.Errorf("error parsing json: %v", err)
-	}
-
-	return &commits, nil
+	return commitStatus, nil
 }
 
 // TODO: implement this function to generate a secure random state token for OAuth flow
