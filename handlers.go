@@ -72,7 +72,7 @@ func handleWebhook(db *sql.DB, dg *discordgo.Session, w http.ResponseWriter, r *
 
 	users, err := getUserIDsByRepo(db, owner, repo)
 	if err != nil {
-		log.Printf("Error getting user ID by owner: %v", err)
+		log.Printf("Error getting user ID by Repo: %v", err)
 	}
 
 	for _, user := range users {
