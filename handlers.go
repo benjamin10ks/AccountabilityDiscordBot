@@ -127,6 +127,16 @@ func handleGithubCallback(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Error registering repo: %v", err)
 	}
+	log.Printf("Registered repo %s/%s for user %s in channel %s", pending.Owner, pending.Repo, pending.DiscordUserID, pending.ChannelID)
 
 	log.Printf("Successfully authenticated user %s for repo %s/%s", pending.DiscordUserID, pending.Owner, pending.Repo)
+
+	fmt.Fprintf(w, `
+    <html>
+        <body style="font-family: sans-serif; text-align: center; padding: 40px;">
+            <h2>✅ Success!</h2>
+            <p>%s/%s is now being tracked. You can close this tab and return to Discord.</p>
+        </body>
+    </html>
+`, pending.Owner, pending.Repo)
 }
