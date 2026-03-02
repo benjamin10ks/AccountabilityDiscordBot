@@ -58,7 +58,7 @@ func scheduleDailyChecks(db *sql.DB, dg *discordgo.Session) {
 		// testing 1 minute
 		target := time.Now().Add(1 * time.Minute)
 		if now.After(target) {
-			target = target.Add(24 * time.Hour)
+			target = target.Add(-24 * time.Hour)
 		}
 
 		time.Sleep(time.Until(target))
@@ -83,15 +83,31 @@ func checkDailyCommits(db *sql.DB, userID string) (map[string]bool, error) {
 		return nil, err
 	}
 
+	token, err := getGithubToken(db, userID)
+	if err != nil {
+		log.Printf("Error getting GitHub token: %v", err)
+	}
+
 	commitStatus := make(map[string]bool)
 	since := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
 
 	for _, repo := range repos {
 		repoKey := fmt.Sprintf("%s/%s", repo.Owner, repo.Name)
 		URL := fmt.Sprintf("https://api.github.com/repos/%s/commits?since=%s&per_page=1", repoKey, since)
-		res, err := http.Get(URL)
+
+		req, err := http.NewRequest("GET", URL, nil)
 		if err != nil {
-			return nil, fmt.Errorf("error making http request: %v", err)
+			return nil, err
+		}
+
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("error making request to GitHub API: %v", err)
 		}
 
 		data, err := io.ReadAll(res.Body)
