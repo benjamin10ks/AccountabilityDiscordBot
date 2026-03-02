@@ -56,9 +56,9 @@ func scheduleDailyChecks(db *sql.DB, dg *discordgo.Session) {
 		now := time.Now()
 		// target := time.Date(now.Year(), now.Month(), now.Day(), 20, 0, 0, 0, now.Location())
 		// testing 1 minute
-		target := time.Now().Add(1 * time.Minute)
+		target := time.Now().Add(-1 * time.Minute)
 		if now.After(target) {
-			target = target.Add(-24 * time.Hour)
+			target = target.Add(24 * time.Hour)
 		}
 
 		time.Sleep(time.Until(target))
@@ -89,7 +89,7 @@ func checkDailyCommits(db *sql.DB, userID string) (map[string]bool, error) {
 	}
 
 	commitStatus := make(map[string]bool)
-	since := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
+	since := time.Now().Add(-24 * time.Hour).Format(time.RFC3339)
 
 	for _, repo := range repos {
 		repoKey := fmt.Sprintf("%s/%s", repo.Owner, repo.Name)
