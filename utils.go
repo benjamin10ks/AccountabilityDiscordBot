@@ -54,7 +54,7 @@ func processUserCommits(db *sql.DB, dg *discordgo.Session, userID, channelID str
 func scheduleDailyChecks(db *sql.DB, dg *discordgo.Session) {
 	for {
 		now := time.Now()
-		target := time.Date(now.Year(), now.Month(), now.Day(), 19, 22, 0, 0, now.Location())
+		target := time.Date(now.Year(), now.Month(), now.Day(), 20, 0, 0, 0, now.Location())
 		if now.After(target) {
 			target = target.Add(24 * time.Hour)
 		}
